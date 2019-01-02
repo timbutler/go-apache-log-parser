@@ -14,5 +14,7 @@ go-apache-log-parser
 		fmt.Printf("bytes: %d\n", line.Bytes)
 		fmt.Printf("referer: %s\n", line.Referer)
 		fmt.Printf("user agent: %s\n", line.UserAgent)
-		fmt.Printf("url: %s\n", line.Url)
+		fmt.Printf("url: %s\n", line.URL)
+		fmt.Printf("method: %s\n", line.Method)
+		fmt.Printf("protocol: %s\n", line.Protocol)
 	}
