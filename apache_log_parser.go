@@ -21,11 +21,13 @@ type Line struct {
 	Referer    string
 	UserAgent  string
 	URL        string
+	Method	   string
+	Protocol   string
 }
 
 func (li *Line) String() string {
 	return fmt.Sprintf(
-		"%s\t%s\t%s\t%d\t%d\t%s\t%s\t%s",
+		"%s\t%s\t%s\t%d\t%d\t%s\t%s\t%s\t%s\t%s",
 		li.RemoteHost,
 		li.Time,
 		li.Request,
@@ -34,6 +36,8 @@ func (li *Line) String() string {
 		li.Referer,
 		li.UserAgent,
 		li.URL,
+		li.Method,
+		li.Protocol,
 	)
 }
 
@@ -88,6 +92,8 @@ func parse(file string) ([]Line, error) {
 		t, _ := time.Parse(layout, value)
 		lineItem.Time = t
 		lineItem.Request = result[3] + " " + result[4] + " " + result[5]
+		lineItem.Method = result[3]
+		lineItem.Protocol = result[5]
 		status, err := strconv.Atoi(result[7])
 		if err != nil {
 			status = 0
