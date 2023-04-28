@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/dsparling/go-apache-log-parser"
+	apachelogparser "go-apache-log-parser"
 	"log"
 	"regexp"
 	"sort"
