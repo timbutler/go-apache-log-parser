@@ -81,26 +81,29 @@ func readLines(path string) ([]string, error) {
 		}
 		defer gzipReader.Close()
 
-		tarReader = tar.NewReader(gzipReader)
+		if strings.HasSuffix(path, ".tar.gz") || strings.HasSuffix(path, ".tgz") {
+			tarReader = tar.NewReader(gzipReader)
 
-		if tarReader != nil {
-			// Loop through each file in the tar archive
-			for {
-				header, err := tarReader.Next()
-				if err == io.EOF {
-					// End of archive
-					break
-				}
-				if err != nil {
-					return lines, err
-				}
+			if tarReader != nil {
+				// Loop through each file in the tar archive
+				for {
+					header, err := tarReader.Next()
+					if err == io.EOF {
+						// End of archive
+						break
+					}
 
-				// Only parse if it's a file
-				if header.Typeflag != tar.TypeReg {
-					continue
-				}
+					if err != nil {
+						return lines, err
+					}
 
-				return scanreader(tarReader)
+					// Only parse if it's a file
+					if header.Typeflag != tar.TypeReg {
+						continue
+					}
+
+					return scanreader(tarReader)
+				}
 			}
 		} else {
 			// if it's not a tar file, assume it's just gzipped
