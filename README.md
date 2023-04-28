@@ -10,7 +10,8 @@ This has been forked from [ksaylor11/go-apache-log-parser](https://github.com/ks
 
 * Updated to use Go modules
 * Updated test to use included test log file
-* Added the ability to parse gzipped tar (tar.gz) files
+* Added the ability to parse gzipped tar (tar.gz / .tgz) files
+* Added the ability to parse gzipped (.gz) files
 
 ## Usage
 

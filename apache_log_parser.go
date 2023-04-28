@@ -46,6 +46,23 @@ func (li *Line) String() string {
 	)
 }
 
+func scanreader(ioreader io.Reader) ([]string, error) {
+	var lines []string
+	var scanner *bufio.Scanner
+
+	// Create a bufio scanner to read the file line by line
+	scanner = bufio.NewScanner(ioreader)
+	for scanner.Scan() {
+		lines = append(lines, scanner.Text())
+	}
+
+	if err := scanner.Err(); err != nil {
+		return lines, err
+	}
+
+	return lines, nil
+}
+
 func readLines(path string) ([]string, error) {
 	file, err := os.Open(path)
 	if err != nil {
@@ -55,9 +72,8 @@ func readLines(path string) ([]string, error) {
 
 	var lines []string
 	var tarReader *tar.Reader
-	var scanner *bufio.Scanner
 
-	// .tar.gz, .gz and .tgz are generally all gzipped tar archives
+	// .tar.gz and.tgz are generally all gzipped tar archives
 	if strings.HasSuffix(path, ".gz") || strings.HasSuffix(path, ".tgz") {
 		gzipReader, err := gzip.NewReader(file)
 		if err != nil {
@@ -84,31 +100,15 @@ func readLines(path string) ([]string, error) {
 					continue
 				}
 
-				// Create a bufio scanner to read the file line by line
-				scanner := bufio.NewScanner(tarReader)
-				for scanner.Scan() {
-					lines = append(lines, scanner.Text())
-				}
-
-				if err := scanner.Err(); err != nil {
-					return lines, err
-				}
-				return lines, nil
+				return scanreader(tarReader)
 			}
+		} else {
+			// if it's not a tar file, assume it's just gzipped
+			return scanreader(gzipReader)
 		}
-
 	} else {
 		// If it's not a tar.gz, assume it's a plain text file
-		scanner = bufio.NewScanner(file)
-		for scanner.Scan() {
-			lines = append(lines, scanner.Text())
-		}
-
-		if err := scanner.Err(); err != nil {
-			return lines, err
-		}
-
-		return lines, nil
+		return scanreader(file)
 	}
 	return lines, errors.New("Unable to parse file")
 }
