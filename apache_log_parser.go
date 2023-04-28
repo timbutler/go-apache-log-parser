@@ -1,13 +1,17 @@
 package apachelogparser
 
 import (
+	"archive/tar"
 	"bufio"
 	"bytes"
+	"compress/gzip"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -21,7 +25,7 @@ type Line struct {
 	Referer    string
 	UserAgent  string
 	URL        string
-	Method	   string
+	Method     string
 	Protocol   string
 }
 
@@ -49,11 +53,55 @@ func readLines(path string) ([]string, error) {
 	defer file.Close()
 
 	var lines []string
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		lines = append(lines, scanner.Text())
+	var tarReader *tar.Reader
+	var scanner *bufio.Scanner
+
+	if strings.HasSuffix(path, ".tar.gz") {
+		gzipReader, err := gzip.NewReader(file)
+		if err != nil {
+			return lines, err
+		}
+		defer gzipReader.Close()
+
+		tarReader = tar.NewReader(gzipReader)
+
+		if tarReader != nil {
+			// Loop through each file in the tar archive
+			for {
+				header, err := tarReader.Next()
+				if err == io.EOF {
+					// End of archive
+					break
+				}
+				if err != nil {
+					return lines, err
+				}
+
+				// Only parse if it's a file
+				if header.Typeflag != tar.TypeReg {
+					continue
+				}
+
+				// Create a bufio scanner to read the file line by line
+				scanner := bufio.NewScanner(tarReader)
+				for scanner.Scan() {
+					lines = append(lines, scanner.Text())
+				}
+
+				if err := scanner.Err(); err != nil {
+					return lines, err
+				}
+			}
+		}
+
+	} else {
+		// If it's not a tar.gz, assume it's a plain text file
+		scanner = bufio.NewScanner(file)
+		for scanner.Scan() {
+			lines = append(lines, scanner.Text())
+		}
 	}
-	return lines, scanner.Err()
+	return lines, nil
 }
 
 func parse(file string) ([]Line, error) {
