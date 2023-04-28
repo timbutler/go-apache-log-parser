@@ -14,6 +14,13 @@ This has been forked from [ksaylor11/go-apache-log-parser](https://github.com/ks
 
 ## Usage
 
+Importing:
+    import (
+        apachelogparser "github.com/timbutler/go-apache-log-parser"
+    )
+
+Example:
+
     lines, err := apachelogparser.Parse("logs/access_log")
     if err != nil {
         log.Fatal(err)
