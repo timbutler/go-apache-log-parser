@@ -1,3 +1,3 @@
-module go-apache-log-parser
+module github.com/timbutler/go-apache-log-parser
 
 go 1.19
