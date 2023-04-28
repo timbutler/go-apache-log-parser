@@ -5,6 +5,7 @@ import (
 	"bufio"
 	"bytes"
 	"compress/gzip"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -56,7 +57,8 @@ func readLines(path string) ([]string, error) {
 	var tarReader *tar.Reader
 	var scanner *bufio.Scanner
 
-	if strings.HasSuffix(path, ".tar.gz") {
+	// .tar.gz, .gz and .tgz are generally all gzipped tar archives
+	if strings.HasSuffix(path, ".gz") || strings.HasSuffix(path, ".tgz") {
 		gzipReader, err := gzip.NewReader(file)
 		if err != nil {
 			return lines, err
@@ -91,6 +93,7 @@ func readLines(path string) ([]string, error) {
 				if err := scanner.Err(); err != nil {
 					return lines, err
 				}
+				return lines, nil
 			}
 		}
 
@@ -100,8 +103,14 @@ func readLines(path string) ([]string, error) {
 		for scanner.Scan() {
 			lines = append(lines, scanner.Text())
 		}
+
+		if err := scanner.Err(); err != nil {
+			return lines, err
+		}
+
+		return lines, nil
 	}
-	return lines, nil
+	return lines, errors.New("Unable to parse file")
 }
 
 func parse(file string) ([]Line, error) {
