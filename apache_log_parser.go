@@ -116,7 +116,64 @@ func readLines(path string) ([]string, error) {
 	return lines, errors.New("Unable to parse file")
 }
 
-func parse(file string) ([]Line, error) {
+// ParseLine - Parses a single line of the Apache log
+func ParseLine(inputline string) *Line {
+	resultline := &Line{}
+
+	var buffer bytes.Buffer
+	buffer.WriteString(`^(\S+)\s`)                  // 1) IP
+	buffer.WriteString(`\S+\s+`)                    // remote logname
+	buffer.WriteString(`(?:\S+\s+)+`)               // remote user
+	buffer.WriteString(`\[([^]]+)\]\s`)             // 2) date
+	buffer.WriteString(`"(\S*)\s?`)                 // 3) method
+	buffer.WriteString(`(?:((?:[^"]*(?:\\")?)*)\s`) // 4) URL
+	buffer.WriteString(`([^"]*)"\s|`)               // 5) protocol
+	buffer.WriteString(`((?:[^"]*(?:\\")?)*)"\s)`)  // 6) or, possibly URL with no protocol
+	buffer.WriteString(`(\S+)\s`)                   // 7) status code
+	buffer.WriteString(`(\S+)\s`)                   // 8) bytes
+	buffer.WriteString(`"((?:[^"]*(?:\\")?)*)"\s`)  // 9) referrer
+	buffer.WriteString(`"(.*)"$`)                   // 10) user agent
+
+	re, err := regexp.Compile(buffer.String())
+	if err != nil {
+		log.Fatalf("Failed to compile regex: %s", err)
+	}
+
+	result := re.FindStringSubmatch(inputline)
+
+	resultline.RemoteHost = result[1]
+	// [05/Oct/2014:04:06:21 -0500]
+	value := result[2]
+	layout := "02/Jan/2006:15:04:05 -0700"
+	t, _ := time.Parse(layout, value)
+	resultline.Time = t
+	resultline.Request = result[3] + " " + result[4] + " " + result[5]
+	resultline.Method = result[3]
+	resultline.Protocol = result[5]
+	status, err := strconv.Atoi(result[7])
+	if err != nil {
+		status = 0
+	}
+	bytes, err := strconv.Atoi(result[8])
+	if err != nil {
+		bytes = 0
+	}
+	resultline.Status = status
+	resultline.Bytes = bytes
+	resultline.Referer = result[9]
+	resultline.UserAgent = result[10]
+	url := result[4]
+	altURL := result[6]
+	if url == "" && altURL != "" {
+		url = altURL
+	}
+	resultline.URL = url
+
+	return resultline
+}
+
+// Parse : Parse the log file
+func Parse(file string) ([]Line, error) {
 	var items []Line
 
 	lines, err := readLines(file)
@@ -124,67 +181,8 @@ func parse(file string) ([]Line, error) {
 		log.Fatalf("readLines: %s", err)
 	}
 	for _, line := range lines {
-		var buffer bytes.Buffer
-		buffer.WriteString(`^(\S+)\s`)                  // 1) IP
-		buffer.WriteString(`\S+\s+`)                    // remote logname
-		buffer.WriteString(`(?:\S+\s+)+`)               // remote user
-		buffer.WriteString(`\[([^]]+)\]\s`)             // 2) date
-		buffer.WriteString(`"(\S*)\s?`)                 // 3) method
-		buffer.WriteString(`(?:((?:[^"]*(?:\\")?)*)\s`) // 4) URL
-		buffer.WriteString(`([^"]*)"\s|`)               // 5) protocol
-		buffer.WriteString(`((?:[^"]*(?:\\")?)*)"\s)`)  // 6) or, possibly URL with no protocol
-		buffer.WriteString(`(\S+)\s`)                   // 7) status code
-		buffer.WriteString(`(\S+)\s`)                   // 8) bytes
-		buffer.WriteString(`"((?:[^"]*(?:\\")?)*)"\s`)  // 9) referrer
-		buffer.WriteString(`"(.*)"$`)                   // 10) user agent
-
-		re1, err := regexp.Compile(buffer.String())
-		if err != nil {
-			log.Fatalf("regexp: %s", err)
-		}
-		result := re1.FindStringSubmatch(line)
-
-		lineItem := new(Line)
-		lineItem.RemoteHost = result[1]
-		// [05/Oct/2014:04:06:21 -0500]
-		value := result[2]
-		layout := "02/Jan/2006:15:04:05 -0700"
-		t, _ := time.Parse(layout, value)
-		lineItem.Time = t
-		lineItem.Request = result[3] + " " + result[4] + " " + result[5]
-		lineItem.Method = result[3]
-		lineItem.Protocol = result[5]
-		status, err := strconv.Atoi(result[7])
-		if err != nil {
-			status = 0
-		}
-		bytes, err := strconv.Atoi(result[8])
-		if err != nil {
-			bytes = 0
-		}
-		lineItem.Status = status
-		lineItem.Bytes = bytes
-		lineItem.Referer = result[9]
-		lineItem.UserAgent = result[10]
-		url := result[4]
-		altURL := result[6]
-		if url == "" && altURL != "" {
-			url = altURL
-		}
-		lineItem.URL = url
+		lineItem := ParseLine(line)
 		items = append(items, *lineItem)
-		//for k, v := range result {
-		//	fmt.Printf("%d. %s\n", k, v)
-		//}
 	}
 	return items, nil
-}
-
-// Parse : Parse the log file
-func Parse(file string) ([]Line, error) {
-	lines, err := parse(file)
-	if err != nil {
-		return nil, err
-	}
-	return lines, nil
 }
