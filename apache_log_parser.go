@@ -10,6 +10,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -46,12 +47,9 @@ func (li *Line) String() string {
 	)
 }
 
-func scanreader(ioreader io.Reader) ([]string, error) {
-	var lines []string
-	var scanner *bufio.Scanner
-
+func scanreader(ioreader io.Reader) (lines []string, err error) {
 	// Create a bufio scanner to read the file line by line
-	scanner = bufio.NewScanner(ioreader)
+	scanner := bufio.NewScanner(ioreader)
 	for scanner.Scan() {
 		lines = append(lines, scanner.Text())
 	}
@@ -64,7 +62,7 @@ func scanreader(ioreader io.Reader) ([]string, error) {
 }
 
 func readLines(path string) ([]string, error) {
-	file, err := os.Open(path)
+	file, err := os.Open(filepath.Clean(path))
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +111,7 @@ func readLines(path string) ([]string, error) {
 		// If it's not a tar.gz, assume it's a plain text file
 		return scanreader(file)
 	}
-	return lines, errors.New("Unable to parse file")
+	return lines, errors.New("unable to parse file")
 }
 
 // ParseLine - Parses a single line of the Apache log
@@ -154,12 +152,12 @@ func ParseLine(inputline string) *Line {
 	if err != nil {
 		status = 0
 	}
-	bytes, err := strconv.Atoi(result[8])
+	bytessent, err := strconv.Atoi(result[8])
 	if err != nil {
-		bytes = 0
+		bytessent = 0
 	}
 	resultline.Status = status
-	resultline.Bytes = bytes
+	resultline.Bytes = bytessent
 	resultline.Referer = result[9]
 	resultline.UserAgent = result[10]
 	url := result[4]
