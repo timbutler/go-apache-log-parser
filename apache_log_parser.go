@@ -138,6 +138,9 @@ func ParseLine(inputline string) *Line {
 	}
 
 	result := re.FindStringSubmatch(inputline)
+	if result == nil {
+		return resultline
+	}
 
 	resultline.RemoteHost = result[1]
 	// [05/Oct/2014:04:06:21 -0500]
