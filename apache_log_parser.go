@@ -3,7 +3,6 @@ package apachelogparser
 import (
 	"archive/tar"
 	"bufio"
-	"bytes"
 	"compress/gzip"
 	"errors"
 	"fmt"
@@ -16,6 +15,23 @@ import (
 	"strings"
 	"time"
 )
+
+var logRegex = regexp.MustCompile(
+	`^(\S+)\s` +
+		`\S+\s+` +
+		`(?:\S+\s+)+` +
+		`\[([^]]+)\]\s` +
+		`"(\S*)\s?` +
+		`(?:((?:[^"]*(?:\\")?)*)\s` +
+		`([^"]*)"\s|` +
+		`((?:[^"]*(?:\\")?)*)"\s)` +
+		`(\S+)\s` +
+		`(\S+)\s` +
+		`"((?:[^"]*(?:\\")?)*)"\s` +
+		`"(.*)"$`,
+)
+
+const timeLayout = "02/Jan/2006:15:04:05 -0700"
 
 // Line : Represents a line in standard Apache log
 type Line struct {
@@ -116,61 +132,33 @@ func readLines(path string) ([]string, error) {
 
 // ParseLine - Parses a single line of the Apache log
 func ParseLine(inputline string) *Line {
-	resultline := &Line{}
-
-	var buffer bytes.Buffer
-	buffer.WriteString(`^(\S+)\s`)                  // 1) IP
-	buffer.WriteString(`\S+\s+`)                    // remote logname
-	buffer.WriteString(`(?:\S+\s+)+`)               // remote user
-	buffer.WriteString(`\[([^]]+)\]\s`)             // 2) date
-	buffer.WriteString(`"(\S*)\s?`)                 // 3) method
-	buffer.WriteString(`(?:((?:[^"]*(?:\\")?)*)\s`) // 4) URL
-	buffer.WriteString(`([^"]*)"\s|`)               // 5) protocol
-	buffer.WriteString(`((?:[^"]*(?:\\")?)*)"\s)`)  // 6) or, possibly URL with no protocol
-	buffer.WriteString(`(\S+)\s`)                   // 7) status code
-	buffer.WriteString(`(\S+)\s`)                   // 8) bytes
-	buffer.WriteString(`"((?:[^"]*(?:\\")?)*)"\s`)  // 9) referrer
-	buffer.WriteString(`"(.*)"$`)                   // 10) user agent
-
-	re, err := regexp.Compile(buffer.String())
-	if err != nil {
-		log.Fatalf("Failed to compile regex: %s", err)
-	}
-
-	result := re.FindStringSubmatch(inputline)
+	result := logRegex.FindStringSubmatch(inputline)
 	if result == nil {
-		return resultline
+		return &Line{}
 	}
 
-	resultline.RemoteHost = result[1]
-	// [05/Oct/2014:04:06:21 -0500]
-	value := result[2]
-	layout := "02/Jan/2006:15:04:05 -0700"
-	t, _ := time.Parse(layout, value)
-	resultline.Time = t
-	resultline.Request = result[3] + " " + result[4] + " " + result[5]
-	resultline.Method = result[3]
-	resultline.Protocol = result[5]
-	status, err := strconv.Atoi(result[7])
-	if err != nil {
-		status = 0
-	}
-	bytessent, err := strconv.Atoi(result[8])
-	if err != nil {
-		bytessent = 0
-	}
-	resultline.Status = status
-	resultline.Bytes = bytessent
-	resultline.Referer = result[9]
-	resultline.UserAgent = result[10]
+	t, _ := time.Parse(timeLayout, result[2])
+
+	status, _ := strconv.Atoi(result[7])
+	bytessent, _ := strconv.Atoi(result[8])
+
 	url := result[4]
-	altURL := result[6]
-	if url == "" && altURL != "" {
-		url = altURL
+	if url == "" && result[6] != "" {
+		url = result[6]
 	}
-	resultline.URL = url
 
-	return resultline
+	return &Line{
+		RemoteHost: result[1],
+		Time:       t,
+		Request:    result[3] + " " + result[4] + " " + result[5],
+		Method:     result[3],
+		Protocol:   result[5],
+		Status:     status,
+		Bytes:      bytessent,
+		Referer:    result[9],
+		UserAgent:  result[10],
+		URL:        url,
+	}
 }
 
 // Parse : Parse the log file

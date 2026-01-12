@@ -12,6 +12,8 @@ This has been forked from [ksaylor11/go-apache-log-parser](https://github.com/ks
 * Updated test to use included test log file
 * Added the ability to parse gzipped tar (tar.gz / .tgz) files
 * Added the ability to parse gzipped (.gz) files
+* Added the ability to parse one line from a string
+* Optimized regex pattern matching for increased performance
 
 ## Usage
 
