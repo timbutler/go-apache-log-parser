@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-var testLogLine = `127.0.0.1 - - [05/Oct/2014:04:34:35 -0500] "GET /test.html HTTP/1.1" 200 6776 "http://www.example.com/index.html" "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:32.0) Gecko/20100101 Firefox/32.0"`
+var testLogLineBench = `127.0.0.1 - - [05/Oct/2014:04:34:35 -0500] "GET /test.html HTTP/1.1" 200 6776 "http://www.example.com/index.html" "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:32.0) Gecko/20100101 Firefox/32.0"`
 
 var testLogLines = []string{
 	`127.0.0.1 - - [05/Oct/2014:04:34:35 -0500] "GET /test.html HTTP/1.1" 200 6776 "http://www.example.com/index.html" "Mozilla/5.0 (Windows NT 6.1; WOW64; rv:32.0) Gecko/20100101 Firefox/32.0"`,
@@ -16,7 +16,7 @@ var testLogLines = []string{
 
 func BenchmarkParseLine(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		ParseLine(testLogLine)
+		ParseLine(testLogLineBench)
 	}
 }
 
@@ -31,7 +31,7 @@ func BenchmarkParseLineMultiple(b *testing.B) {
 func BenchmarkParseLineParallel(b *testing.B) {
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
-			ParseLine(testLogLine)
+			ParseLine(testLogLineBench)
 		}
 	})
 }
